@@ -1,0 +1,46 @@
+---
+- hosts: local
+  gather_facts: yes
+  connection: local
+  tasks:
+    - debug: msg="connected to {{inventory_hostname}}"
+      delegate_to: localhost
+
+    - name: do something
+      shell: >
+        AWS_PROFILE=dev aws --region=us-west-2 ec2 describe-regions
+      changed_when: false
+      register: shell_test_string
+
+    - name: display file content
+      debug: msg="executed pwd on '{{shell_test_string.stdout}}'"
+    - name: display error
+      debug: msg="executed pwd on '{{shell_test_string.stderr}}'"
+
+    - name: display file content
+      debug: msg="executed pwd on '{{item}}'"
+      with_items:
+        - "{{shell_test_string.stdout}}"
+        - "{{shell_test_string.stderr}}"
+      when: false
+
+    # this takes a string (stdout) and pretty jsons it - not what we want
+    - name: display file content
+      debug: msg="executed pwd on '{{item|to_nice_json}}'"
+      with_items:
+        - "{{shell_test_string.stdout}}"
+      when: false
+
+    - name: display file content
+      debug: var=shell_test_string
+    
+    # make a json from stdout, get regions then convert to string - set this to a fact - i think Regions is a pretty json object.
+    # this is converted to a string again
+    - name: display file content
+      set_fact:
+        my_aws_regions: "{{(shell_test_string.stdout|from_json).Regions}}"
+
+    - debug: var=my_aws_regions
+    - debug: msg="{{my_aws_regions}}"
+    - debug: msg="{{my_aws_regions|to_nice_json(indent=8)}}"
+...
